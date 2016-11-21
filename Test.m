@@ -16,38 +16,22 @@ Nb = 40; %Bank number
 K = N/2+1;
 
 %Build an SOM
-net = selforgmap([12 12]);
+net = selforgmap([8 8]);
 
 %Iterate through tracks
-for i=1:1
+for i=1:ntracks
     j = randi([1 ntracks]);
-    
     [pathstr,name,ext] = fileparts(char(tracks(j)));
     
-    [samples,fs] = audioread(strcat(path,name,'.wav'));
-    
-    Omega_p = MelFreqs( Nb,fs );
-    fbank = MelBanks ( K, fs, Omega_p );
-
-    spec = Spectro( samples,N,fs ); %Get the spectrum
-    mfcc = MelSpecCoef( fbank, spec); %Get the MFCC coefficients
-    
-    imagesc(mfcc)
-    title(genres{j})
-    xlabel('Discretized Timesteps')
-    ylabel('MFCC Coefficients')
-    
-    pause(1)
+    file = strcat(path,name,'.wav');
+    returnCoefs(file,30);
     
     %Let's try training an SOM
     net = train(net,mfcc);
-    
-%     plotsompos(net,mfcc);
-    
+        
     y = net(mfcc);
-    
     classes = vec2ind(y);
     
-    %Let's play with the Markov Chaining
-%     [TRANS, EMIS] = hmmestimate(classes,
+    %Play with a Markov Model
+    T = Train(classes,size(y,1));
 end

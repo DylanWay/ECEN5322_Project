@@ -1,4 +1,4 @@
-function [M,mfcc,genres] = KullbackAdjacency
+function M = KullbackAdjacency
     %Compute the Graph, using Kulbeck-Leibler
     %The directory of the tracks
     path = 'C:/Users/RyanDavidMontoya/Documents/Patterns/ecen5322/Volumes/project/tracks/';
@@ -7,8 +7,7 @@ function [M,mfcc,genres] = KullbackAdjacency
     fid = fopen('C:/Users/RyanDavidMontoya/Documents/Patterns/ecen5322/Volumes/project/ground_truth.csv');
     truth = textscan(fid,'%s%s','delimiter',',');
     tracks = truth{1};
-    genres = truth{2};
-    save('genres.mat','genres')
+    global genres = truth{2};
 
     t = 30; %Only need 30 sec
     %Number of tracks to compare

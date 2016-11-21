@@ -25,14 +25,12 @@ function est = MarkovEstimate(T,seq)
         Pp = P*(P.^-1)';
         Pi = Pi.*Pp;
         
-        if i == 10
-           break 
-        end
+%         if i == 10
+%            break 
+%         end
     end
-    
+        
     %Sum is the partial prob
-    s = sum(Pi).^-1;
-    
-    %Compute P(seq|X=i)
-    %X is the genre RV
+    est = sum(Pi).^-1;
+    est(isnan(est)) = 0;
 end

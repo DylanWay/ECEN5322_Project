@@ -1,7 +1,7 @@
 %% Use this script to test shit out
 
 %% Generate M matrix, and MFCCs
-%M = KullbackAdjacency();
+% [M,genres,mfcc] = KullbackAdjacency();
 
 %% Now, get a subset
 rm = [5,5,5,5,5,5]; %Let's experiment with a subset of 25 songs, 5 from each genre
@@ -46,7 +46,7 @@ states = Laplacian(Mt,K,P); %Reduced M matrix, get state space
 %% Okay, using the maximum of states, time to create the transition matrices
 T = cell(length(g),1);
 n = max(states);
-Tmin = 0.001; %Minimum transition probability
+Tmin = 0.1; %Minimum transition offset
 
 for i = 1:length(g)
     %We need to train the transistion matrix using all of the samples of
@@ -69,15 +69,16 @@ for i = 1:length(g)
     display('Next Matrix')
     display(i)
     
-    sum_T = sum(T{i} , 2);
-    
+    offset = Tmin*ones(n);
+    T{i} = T{i}+offset; %No zero prob
+    sum_T = sum(T{i} , 2); %Normalize it
     %Normalize transistion matrix
     %NO zero prob allowed!
-%     T{i}(T{i}==0) = Tmin;
     %Normalize once
-    T{i} = (T{i}./sum_T(:,ones(1,size(T{i} , 1))));
-    T{i}(isnan(T{i})) = Tmin; %Get rid of nonzero probabilities
+%     T{i} = (T{i}./sum_T(:,ones(1,size(T{i} , 1))));
+%     T{i}(isnan(T{i}) || T{i} == 0) = Tmin; %Get rid of nonzero probabilities
     %Renormalize again
+%     sum_T = sum(T{i} , 2);
     T{i} = (T{i}./sum_T(:,ones(1,size(T{i} , 1))));
 end
 
@@ -88,14 +89,18 @@ for i = 1:length(R)
     x = mfcc{R(i)};
     I = mahalanSeq(x,Gauss,set); %Get the Mahalanobis sequence
     
+    display('True Genre:')
+    display(genres{R(i)});
+    
     %% First test, count the numbers of each similarity
     [genre,P] = gCount(genres,I);
 
     %% Let's compare it to the transistion matrix implementation
     specState = states(I);
     %Now, compute probability using the transition matrices
-    
-    
-    %Make the confusion matrix
-%     C = zeros(length(R));
+    est = MarkovEstimate(T,specState)
+    [~,ind] = max(est);
+    display('Guess: ')
+    display(g{ind})
+    pause(1)
 end

@@ -12,4 +12,6 @@ function KL = KulbeckLeibler(data1,data2)
     
     %Compute the distance
     KL = 0.5*(log(norm(cov2)/norm(cov1))-d+trace(cov2^-1*cov1)+(m2-m1)'*(cov2^-1)*(m2-m1));
+    %Saw something different online (Wiki)
+    %KL =   0.5*(log(det(cov2)/det(cov1))-d+trace(cov2^-1*cov1)+(m2-m1)'*(cov2^-1)*(m2-m1));
 end

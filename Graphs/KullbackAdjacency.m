@@ -1,10 +1,11 @@
-function [M,mfcc,genres] = KullbackAdjacency
-    %Compute the Graph, using Kulbeck-Leibler
-    %The directory of the tracks
-    path = 'C:/Users/RyanDavidMontoya/Documents/Patterns/ecen5322/Volumes/project/tracks/';
+function [M,mfcc,genres] = KullbackAdjacency ( path )
+    %Compute the Graph, using Kullback-Leibler
+    %music_path = strcat(path, 'tracks/');
+    music_path = strcat(path, 'tracks\');
+    truth_path = strcat(path, 'ground_truth.csv');
 
     %Pull the truth file
-    fid = fopen('C:/Users/RyanDavidMontoya/Documents/Patterns/ecen5322/Volumes/project/ground_truth.csv');
+    fid = fopen(truth_path);
     truth = textscan(fid,'%s%s','delimiter',',');
     tracks = truth{1};
     genres = truth{2};
@@ -21,13 +22,13 @@ function [M,mfcc,genres] = KullbackAdjacency
 %     Get all the MFCCs
     for i = 1:ntracks
         [~,name,~] = fileparts(char(tracks(i)));
-        file = strcat(path,name,'.wav');
+        file = strcat(music_path,name,'.wav');
         mfcc{i} = returnCoefs(file,N,t);
     end
     
     display('Finished Computing MFCCs')
     for i = 1:ntracks
-        for j = i:ntracks
+        for j = 1:ntracks
             %Find the divergence
             M(i,j) = KulbeckLeibler(mfcc{i},mfcc{j});
         end
@@ -35,7 +36,9 @@ function [M,mfcc,genres] = KullbackAdjacency
     end
 
     %Now, make it symmetric
-    M = triu(M) - diag(diag(M)) +triu(M)';
+    %Not sure we can do this
+    %M_asym = M;
+    M = M + M';
 
     save('M.mat','M')
 end

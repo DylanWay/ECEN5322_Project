@@ -1,31 +1,30 @@
-%% Use this script to test shit out
+% Add folder paths
+%path = 'C:/Users/RyanDavidMontoya/Documents/Patterns/ecen5322/Volumes/project/';
+path = 'C:\Users\Dylan\Desktop\ECEN 5322 Project\ecen5322\Volumes\project\';
+addpath('MelCoef','Markov','Graphs');
 
-%% Generate M matrix, and MFCCs
-% [M,genres,mfcc] = KullbackAdjacency();
+% Generate M matrix, and MFCCs
+[M,mfcc,genres] = KullbackAdjacency(path);
+
+% Specify the tree setup
+tree1_1 = {'classical','world'};
+tree1_2 = {'electronic','jazz_blues','metal_punk','rock_pop'};
+
+%Get the unique genres
+g = {'classical','electronic','jazz_blues','metal_punk','rock_pop','world'};
 
 %% Now, get a subset
 rm = [5,5,5,5,5,5]; %Let's experiment with a subset of 25 songs, 5 from each genre
-%Get the unique genres
-g = {'classical','electronic','jazz_blues','metal_punk','rock_pop','world'};
-n = length(M);
-
-R = zeros(sum(rm),1);
-cur = 1;
-for i = 1:length(g)
-    ind = find(strcmp(genres,g{i}));
-    
-    %Now, remove rm(i) of these
-    r = randi([min(ind) max(ind)],rm(i),1);
-    
-    %We have the indices to be removed, gotta reformat the M matrix
-    R(cur:(cur-1)+rm(i)) = r;
-    cur = cur + rm(i);
-end
+R = Remove_Subset( rm, genres, g );
 
 %Now, remove these colums/rows from M
 Mt = M;
 Mt(:,R) = [];
 Mt(R,:) = [];
+
+%set is the list of training songs
+set = 1:length(mfcc); %The total length of the set of test items
+set(R) = [];
 
 % New covariance, mean array
 Gauss = cell(length(mfcc),2);
@@ -34,73 +33,60 @@ for i = 1:length(Gauss)
     Gauss{i,2} = mean(mfcc{i},2);
 end
 
-set = 1:length(mfcc); %The total length of the set of test items
-%Now, remove the test indices
-set(R) = [];
-
 %% Now, get the clustered bins using spectrum of Lsym
-K = 20; %Number of bins, clusters
+E = 15; %Number of eigenvectors
+K = 15; %Number of bins, clusters
 P = 0; %Cutoff threshold, leave it connected
-states = Laplacian(Mt,K,P); %Reduced M matrix, get state space
+states = Laplacian(Mt,E,K,P); %Reduced M matrix, get state space
 
 %% Okay, using the maximum of states, time to create the transition matrices
 T = cell(length(g),1);
+Tmin = 0.15; %Minimum transition offset
 n = max(states);
-Tmin = 0.1; %Minimum transition offset
 
-for i = 1:length(g)
-    %We need to train the transistion matrix using all of the samples of
-    %that genre
+parfor i = 1:length(g)
+    %We need to train the transistion matrix using all of the samples of that genre
     T{i} = zeros(n);
-    for j = 1:length(set) %Length of training set
-        if strcmp(genres{j},g{i}) %See if its part of the same genre
-            display(j)
-            x = mfcc{set(j)};
-            %Correct set to not include self
-            setN = set;
-            setN(j) = []; %Remove self element
-            I = mahalanSeq(x,Gauss,setN); %Get the Mahalanobis sequence of similarities (will they always bin to the same place?)
-            X = states(I); %Pull the bin states
-
-            %Now, let's use to train the Markov Matrix
-            T{i} = T{i} + full(sparse(X(1:end - 1) , X(2 : end),1,n,n)); %Add connections
-        end
-    end
-    display('Next Matrix')
-    display(i)
+    T{i} = MarkovTrain( T{i}, Tmin, set, genres, mfcc, states, Gauss, g{i} );
     
-    offset = Tmin*ones(n);
-    T{i} = T{i}+offset; %No zero prob
-    sum_T = sum(T{i} , 2); %Normalize it
-    %Normalize transistion matrix
-    %NO zero prob allowed!
-    %Normalize once
-%     T{i} = (T{i}./sum_T(:,ones(1,size(T{i} , 1))));
-%     T{i}(isnan(T{i}) || T{i} == 0) = Tmin; %Get rid of nonzero probabilities
-    %Renormalize again
-%     sum_T = sum(T{i} , 2);
-    T{i} = (T{i}./sum_T(:,ones(1,size(T{i} , 1))));
+    display('Next Matrix')
 end
 
 save('T.mat','T')
 
 %% FINALLY- Time to classify genre
+correct_guess_Markov = zeros(sum(rm),1);
 for i = 1:length(R)
-    x = mfcc{R(i)};
-    I = mahalanSeq(x,Gauss,set); %Get the Mahalanobis sequence
-    
     display('True Genre:')
     display(genres{R(i)});
     
-    %% First test, count the numbers of each similarity
-    [genre,P] = gCount(genres,I);
-
-    %% Let's compare it to the transistion matrix implementation
+    x = mfcc{R(i)};
+    I = mahalanSeq(x,Gauss,set); %Get the Mahalanobis sequence
+    
+    % First test, count the numbers of each similarity
+    [genre,P] = gCount(genres,set,I);
+    
+    % Let's compare it to the transistion matrix implementation
+    % Added sets here to get true position
     specState = states(I);
-    %Now, compute probability using the transition matrices
-    est = MarkovEstimate(T,specState)
+    est = MarkovEstimate(T,specState);
     [~,ind] = max(est);
-    display('Guess: ')
+    display('Guess_Markov: ')
     display(g{ind})
-    pause(1)
+    fprintf('\n')
+    
+    % Keep track of accuracy with Markov
+    if strcmp(genres(R(i)), g{ind})
+        correct_guess_Markov(i) = 1;
+    end
+end
+
+%% Display accumulated results with Markov
+display('Markov Model:')
+correct_guess_Markov = mat2cell(correct_guess_Markov, rm);
+correct_perc = zeros(1,6);
+for i = 1:6
+    correct_perc(i) = 100*sum(correct_guess_Markov{i})/rm(i);
+    display('   Accuracy Percentage:')
+    fprintf('      %s: %3.0f%%\n',g{i},correct_perc(i))
 end

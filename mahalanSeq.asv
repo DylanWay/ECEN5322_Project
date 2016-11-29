@@ -17,7 +17,9 @@ function I = mahalanSeq(sample,Gauss,set)
         diff = bsxfun(@minus,x,m);
 
         %Figure out the closest mean to distribution
-        seq(:,ii) = sqrt(sum((diff'*cov1^-1).*diff',2)); 
+        seq(:,ii) = sqrt(sum((diff'*cov1^-1)*diff,2));
+        %seq(:,ii) = sqrt(sum((diff'*cov1^-1).*diff',2)); 
+        g = diag(sqrt((diff'*cov1^-1)*diff));
     end
     
     %Get the minimum, I is the state sequence (closest distribution)

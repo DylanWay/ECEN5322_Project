@@ -9,6 +9,7 @@ function [ outAudio, Fs ] = ReadAudio( file,T )
 
     if (T < len)
         %Extract the portion of the track (T seconds)
+        %Extracts middle of song
         samp = T*Fs; %Time in samples
         outAudio = y(floor((length(y)-samp)/2):ceil((length(y)+samp)/2));
         
